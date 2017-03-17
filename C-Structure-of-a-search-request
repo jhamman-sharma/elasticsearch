@@ -1,0 +1,131 @@
+|------------------------------------------------------------------------------------
+| Specifying A Search Scope
+|------------------------------------------------------------------------------------
+
+You can search an entire cluster or you can limit the scope by specifying the
+names of indices or types in the search request.
+
+|------------------------------------------------------------------------------------
+| _search
+|------------------------------------------------------------------------------------
+
+ES provides JSON based REST endpoints to communicate. All search requests use the
+_search REST endpoint and can be either a GET or a POST request.
+
+|------------------------------------------------------------------------------------
+| Basic Components Of A Search Request
+|------------------------------------------------------------------------------------
+
+--> query: The actual query for your search request.
+
+--> size: Represents the amount of documents to return.
+
+--> from: Together with size, from is used to do pagination.
+
+--> _source: used to filter the fields to be returned.
+
+--> sort: The default sorting is based on the score for a document.
+
+|------------------------------------------------------------------------------------
+| Results Start & Page Size
+|------------------------------------------------------------------------------------
+
+If you configure a from value of 7 and size value of 5, Elasticsearch will send the
+8th, 9th, 10th, 11th, and 12th results back.
+
+Default behavior is to start at the first result (the "0th"), and return 10 results
+back in the response.
+
+|------------------------------------------------------------------------------------
+| URL-based & Request Body-based Search Request
+|------------------------------------------------------------------------------------
+
+These are two ways to perform a search request. The later one is more versatile and
+exposes more search features.
+
+|------------------------------------------------------------------------------------
+| URL-based Search Request
+|------------------------------------------------------------------------------------
+
+--> localhost:9200/blog/authors/_search?from=10&size=10&sort=date:asc&_source=title,date&q=title:elections
+
+	We specified to return matching documents in authors type in blog index with
+	following configurations:
+	
+	--> from=10
+	--> size=10
+	--> sort=date:asc
+	--> _source=title,date
+	--> q=title:elections
+	
+	NOTE: When we do not specify the query, requests are made using default
+	match_all query.
+	
+	Let us look at one possible result:
+	
+	{
+		"index": "blogs",
+		"type": "authors",
+		"id": "114",
+		"score": null,
+		"source": {
+			"date": "2016-10-11T20:15",
+			"title": "Effective Speech Strategy in Elections"
+		}
+	}
+	
+|------------------------------------------------------------------------------------
+| A Null Score?
+|------------------------------------------------------------------------------------
+
+In the above example, the score is null. When using "sort" configuration, the score
+is set to null. The default sorting behavior is based on the score for a document.
+
+|------------------------------------------------------------------------------------
+| Few More URL Based Search Request Examples
+|------------------------------------------------------------------------------------
+
+--> 1) localhost:9200/_search
+--> 2) localhost:9200/blog/_search
+--> 3) localhost:9200/blog/author/_search
+--> 4) localhost:9200/_all/author/_search
+--> 5) localhost:9200/*/author/_search
+--> 6) localhost:9200/blog,feed/author/_search
+--> 7) localhost:9200/blo*,-blog/_search
+
+We need some explanations too:
+
+--> 1) Search the entire cluster
+--> 2) Search only the blog index
+--> 3) Search only the author type in blog index
+--> 4) Search only the author type but in the entire cluster
+--> 5) Same as 4)
+--> 6) Search the author type in blog and feed indices
+--> 7) Search all indices starting with blo but not the blog index
+
+|------------------------------------------------------------------------------------
+| Request Body-Based Search Requests
+|------------------------------------------------------------------------------------
+
+When using more advanced searches, using request body-based searches gives more
+flexibility and options. We  can also use URL-based search request with it.
+
+Let us look at a sample:
+
+--> localhost:9200/blog/_search
+--> Raw Payload:
+	{
+		"query": {
+			"match_all": {}
+		}
+		"from": 0,
+		"size": 3,
+		"_source": ["name", "organizer", "description"],
+		"sort": [{"created_on": "desc"}, {"name": "desc"}, "_score"]
+	}
+	
+|------------------------------------------------------------------------------------
+| The End?
+|------------------------------------------------------------------------------------
+
+Here we got basic understanding of structural components of search requests.

@@ -1,0 +1,67 @@
+|-------------------------------------------------------------------------
+| Identifying A Document
+|-------------------------------------------------------------------------
+
+Index Name + Type Name + Document ID = Uniquely Identified Document
+
+Example: blogs/authors/4
+
+|-------------------------------------------------------------------------
+| Document
+|-------------------------------------------------------------------------
+
+Elasticsearch is document-oriented NoSQL database. The smallest unit of
+data you index or search is a document.
+
+A document is self-contained and is a JSON representation of the data to be
+stored. It needs no predefined schema.
+
+JSON over HTTP is the most widely used way to communicate with Elasticsearch.
+
+We can have nested documents called hairarchical document. An example:
+
+{
+	"name": "Elasticsearch Conference",
+	"organizer": "Elastic Bucky",
+	"members": ["Lee", "Mike", "Monty"],
+	"venue": {
+		"name": "Elastic Lab",
+		"street": "Elastic Street"
+	} 
+}
+
+|-------------------------------------------------------------------------
+| Types
+|-------------------------------------------------------------------------
+
+Types are logical containers for documents, similar to how tables are
+containers for rows.
+
+Two documents with different structures should be kept in different types.
+
+|-------------------------------------------------------------------------
+| Mappings
+|-------------------------------------------------------------------------
+
+Ofcourse, Elasticsearch comes with its own set of field types. When the
+above document is indexed, name would be mapped as string. These are smart
+guesses made by Elasticsearch but we should not rely on it. Instead we should
+predefine our mappings before indexing data.
+
+|-------------------------------------------------------------------------
+| Indices
+|-------------------------------------------------------------------------
+
+Think of an index as container for mapping types similar to a databse as
+container for table types.
+
+|-------------------------------------------------------------------------
+| Near-Real-Time 
+|-------------------------------------------------------------------------
+
+Each index has a setting called refresh_interval. This defines the interval
+at which newly indexed documents are made available for searches. Default
+setting is every second.
+
+So instead of refreshing Elasticsearch after each indexed document, it is
+refreshed automatically after the predefined interval.

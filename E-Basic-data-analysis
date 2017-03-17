@@ -1,0 +1,30 @@
+|------------------------------------------------------------------------------------
+| Analysis Before Indexing
+|------------------------------------------------------------------------------------
+
+Before indexing the document, Elasticsearch performs a number of steps:
+
+--> Character filtering
+--> Breaking text into tokens
+--> Token filtering
+--> Token indexing
+
+For example search text: "share pen & paper 2", following happens:
+
+Step1: share Pen and Paper too
+Step2: share, Pen, and, Paper, too
+Step3: share, pen, paper, too
+Step4: index all the tokens
+
+NOTE: When token filtering, Elasticsearch also add possible synonyms, possibly, "ink"
+for "pen", "article" for "paper".
+
+
+|------------------------------------------------------------------------------------
+| Analysis While Searchhing
+|------------------------------------------------------------------------------------
+
+Search queries such as "match", "match_phrase" do perform some analysis before
+searching. Queries like "term" and "terms" do not.
+
+NOTE: In this chapter, our focus is analysis before indexing.

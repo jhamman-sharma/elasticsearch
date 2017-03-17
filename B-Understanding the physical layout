@@ -1,0 +1,231 @@
+|-------------------------------------------------------------------------
+| Intro
+|-------------------------------------------------------------------------
+
+For sake of brevity, we will abbreviate Elasticsearch as ES. Also, if a term
+pops up that we are unfamiliar with, we will also document them.
+
+ES is built on top of Lucene, a Java search engine library, but
+with added capabilities and distributed model. This is a basic
+introduction to the physical layout of ES. It will introduce:
+
+--> how multiple nodes work together in a cluster,
+--> how data is divided in shards and replicated,
+--> how indexing and searching work with multiple shards and replicas.
+
+
+|-------------------------------------------------------------------------
+| A lousy (but useful) comparison
+|-------------------------------------------------------------------------
+
+Think of the following as:
+
+--> Index     => Database
+--> Type      => Table
+--> Documents => Rows
+
+|-------------------------------------------------------------------------
+| Brief
+|-------------------------------------------------------------------------
+
+By default, in a 3-node cluster, each index is made up of 5 primary shards,
+each with one replica, for a total of 10 shards.
+
+--> A shard is a directory of files where Lucene stores the data for your
+    index.
+--> A replica is a copy of a primary shard.
+--> A node is a process running ES.
+
+|-------------------------------------------------------------------------
+| Indexing Mechanics
+|-------------------------------------------------------------------------
+
+When a document is indexed, it is sent to a random shard and then replicated.
+This random shard can exist on a different node within a cluster.
+
+|-------------------------------------------------------------------------
+| Search Mechanics
+|-------------------------------------------------------------------------
+
+When an index is searched, ES looks in a complete set of shards
+or even replica shards. This is useful for search performance and fault
+tolerance both.
+
+|-------------------------------------------------------------------------
+| Cluster
+|-------------------------------------------------------------------------
+
+A node is an instance of ES and multiple nodes together form
+a cluster.
+
+|-------------------------------------------------------------------------
+| 3-Node Cluster
+|-------------------------------------------------------------------------
+
+Look at the pseudo architecural arrangement of nodes, shards and replicas
+to promote performance and fault tolerance.
+
+N-1 => S-0 + S-3 + R-4
+N-2 => S-2 + R-0 + R-1 + R-3
+N-3 => S-1 + S-4 + R-2
+
+--> Observation:
+    ==> A shard and its replica do not exist on same node.
+	==> Of-course, a shard is the smallest unit ES deals with.
+
+|-------------------------------------------------------------------------
+| Lucene Index
+|-------------------------------------------------------------------------
+
+A Lucene index  is itself a directory of files containing an inverted index.
+An inverted index is a data structure designed for faster searches.
+
+Think of a search for blog posts by their tags. In MySql, we have such table:
+
++--------------+
++ Table: Posts +
++--------------+----------------------------+
++ PostID  |  PostTitle  |  PostDescription  +
++-------- +-------------+-------------------+
+
+Now, for posts relevant with tag "elections", we will have to query for all
+the posts that have word "elections" in their post title or description. This
+is slow.
+
+What if we had a "Tags_Posts" table such that it contained a unique pair of
+tags and post ids. This is inverted index (still slow in RDBMS because of
+joins overhead).
+
++-------------------+
++ Table: Tags_Posts +
++-------------------+
++ TagID  |  PostID  +
++--------+----------+
+
+
+So, an inverted index is a data structure where we keep a list of "where
+each word belongs". This also helps with relevance of search results.
+
+Of-course, this data structure imposes slow updates, but our motivation is
+"Relevant and Fast Search".
+
+
+|-------------------------------------------------------------------------
+| Term Dictionary & Term Frequencies
+|-------------------------------------------------------------------------
+
+We know, a shard is a Lucene index (an inverted index). Let us look at its
+conceptual diagram:
+
++----------------------+
++ Shard-0: blog_posts  +
++----------------------+-------------------------------------------------------+
++ Term      |  Document      |  Frequency                                      +
++-----------+----------------+-------------------------------------------------+
++ arrays    + id1            + 1 occurrence:  id1 -> 1 time                    +
++ objects   + id1, id3       + 3 occurrences: id1 -> 1 time,  id3 -> 2 times   +
++ uml       + id2, id3       + 5 occurrences: id2 -> 2 times, id3 -> 3 times   +
++------------------------------------------------------------------------------+
+
+--> The term dictionary maps each term (word) to document identifiers.
+--> Term frequencies help with calculation of relevancy score of results.
+--> Clearly, document id3 will rank higher than id2 for term "uml".
+
+|-------------------------------------------------------------------------
+| TF-IDF: The Ranking ALgorithm
+|-------------------------------------------------------------------------
+
+The default Elasticsearch relevancy ranking algorithm used to calculate a
+document's relevancy score is TF-IDF.
+
+TF-IDF stands for: Term Frequency - Inverse Document Frequency
+
+--> Term Frequency:
+    ==> The more the number of occurrences of a term in a document,
+        the higher is its relevancy.
+		
+--> Inverse Document Frequency:
+    ==> The weight of each term is higher if the term is uncommon across
+		other documents.
+		
+So, lets take an example to understand IDF:
+
++-------------------------------------------+
++ bicycle      |  id1, id2, id3, id4, id5   +
++ race         |  id3, id5                  +
++-------------------------------------------+
+
+The word "race" scores higher in relevancy than "bicycle" because it is less
+common across documents.
+
+
+|-------------------------------------------------------------------------
+| Primary & Replica Shards
+|-------------------------------------------------------------------------
+
+--> ES index is broken down into chunks: shards.
+--> So, an ES index is made up of multiple shards.
+--> A shard is technically a Lucene index.
+--> So, an ES index is made up of multiple Lucene indices.
+--> A shard can be either a primary or a replica shard.
+--> A replica is a copy of a primary shard.
+--> A replica becomes a new primary shard if the original primary shard is lost.
+--> An ES index is made up of one or more primary shards and zero or more replicas
+    per shard.
+--> Replicas can be added or removed at runtime, primaries can't.
+--> The default number of shards per index is 5.
+
+
+|-------------------------------------------------------------------------
+| Distributing Shards In A Cluster
+|-------------------------------------------------------------------------
+
+A cluster is created with multiple nodes. In a distributed model, shards
+are distributed across multiple nodes.
+
+--> The simplest Elasticsearch cluster has one node: 1 machine running 1 ES process.
+--> A node is an Elasticsearch process (instance).
+--> 2 nodes mean two ES instances.
+--> Multiple instances (nodes) could be created on the same machine.
+--> We installed a one-node cluster locally.
+--> Shards get balanced between all nodes as we add them.
+--> Adding nodes to an existing cluster is called horizontal scaling.
+--> Adding more resources to an existing node is called vertical scaling.
+
+|-------------------------------------------------------------------------
+| Distributed Indexing and Searching
+|-------------------------------------------------------------------------
+
+We can have multiple shards on a single node or spread across multiple nodes.
+So how does indexing and searching work in later case?
+
+Let us first explore distributed indexing conceptually:
+
+Suppose we have a 2-Node Cluster with two primary shards and one replica per
+shard.
+
+n1 => s1 + r2
+n2 => s2 + r1
+
+Suppose an indexing request is received by first node. It now selects the
+shard to index the document to. The appropriate shard is selected by hashing
+the document's ID. By default, documents are evenly distributed between shards.
+Once the shard is determined, the node forwards the document to the node
+holding that shard. Once the primary shard indexes the document, the indexing
+operation is replayed by all the replicas of that shard. When all the replicas
+finish indexing the document, the indexing command succesfully returns.
+
+Feww...!! That's it. This is the way of distributed indexing.
+
+What about distributed searching?
+
+Search request is forwarded to primary/replica shards containing a complete
+set of data. Then results are aggregated and sent back to the client. I've
+heard that round-robin approach is used.
+
+|-------------------------------------------------------------------------
+| The End?
+|-------------------------------------------------------------------------
+
+This was a basic introduction to the architecture of Elasticsearch from
+conceptual point of you.

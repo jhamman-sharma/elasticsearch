@@ -1,0 +1,146 @@
+|------------------------------------------------------------------------------------
+| Intro
+|------------------------------------------------------------------------------------
+
+Not only we do want to search matching documents, we also want the most relevant
+results. In the request body-based search request, the query configuration was set
+to match_all:
+
+{
+	"query": {
+		"match_all": {}
+	}
+}
+
+We din't specify any specific matching query term. So we were getting all the matched
+documents based on other configurations. However, we would like to be very specific.
+For example, we would like to find only those documents that contain word "Hadoop"
+in the groups type in get-together index.
+
+Now is the time. Lets explore!!
+
+|------------------------------------------------------------------------------------
+| "match" Query & "term" Filter
+|------------------------------------------------------------------------------------
+
+There many query and filter types available. We will examine "match" query and "term"
+filter here. After that, we will look at most commonly used queries and filters.
+
+
+Following is a match query to find events with "Hadoop" in the title:
+
+--> localhost:9200/get-together/event/_search
+--> Raw Payload
+	{
+		"query": {
+			"match": {
+				"title": "hadoop"
+			}
+		}
+	}
+	
+Following is a term filter to find events with host "andy":
+
+--> localhost:9200/get-together/event/_search
+--> Raw Payload
+	{
+		"filter": {
+			"term": {
+				"title": "hadoop"
+			}
+		}
+	}
+	
+There is a significant difference in the above two match queries:
+--> In first match query, we get document with decending scores.
+--> In second match query, all documents have same scores.
+
+**** WHAT? ALL DOCUMENTS WITH SAME SCORE IN SECOND MATCH? ****
+
+Before we go any further seeking the answer for such behavior, let us introduce
+filters:
+
+A filter on a search returns a simple binary:
+	"Does this document match this query? Yes or no"
+
+Filters do not compute the score for a particular term as queries do. They require
+less processing and are cacheable because they don't calculate the score. Hey they
+are more performant.
+
+FIRST SOME HISTORY. As per my brief research on the Elasticsearch documentation
+guide, filters and queries were two separate features. Rule of thumb for when to
+use what:
+
+1) "Use queries for full text search, because relevancy matters, we need scoring".
+2) "Use filters for everything else".
+
+In version 2.X, filters were eliminated, and queries were given the ability to become
+non-scoring. So what we have now is called "filtered queries".
+
+
+|------------------------------------------------------------------------------------
+| Introducing "filtered" Queries
+|------------------------------------------------------------------------------------
+
+This approach speaks: "Filter First, Query Then!!"
+
+Exclude as many documents as you can with a filter, then query just the documents
+that remain.
+
+WARNING: As per current guide:
+
+WE HAVE DEPRECATED THE "filtered" QUERY IN FAVOUR OF A NEW "filter" CLAUSE ON THE
+"bool" QUERY. NOTE THAT THE QUERY DSL IS STILL BACKWARD COMPATIBLE, IT WILL BE
+REMOVED IN FUTURE RELEASES.
+
+This means, instead of doing this:
+
+{
+	"filtered" : {
+		"query": { query definition },
+		"filter": { filter definition }
+	}
+}
+
+We should do this:
+
+{
+	"bool" : {
+		"must": { query definition },
+		"filter": { filter definition }
+	}
+}
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+THIS WAS LONG, Okay, lets look at an example of filtered query DSL
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+--> localhost:9200/get-together/_search
+--> Raw Payload
+	{
+		"query": {
+			"filtered": {
+				"query": {
+					"match": {
+						"title": "hadoop"
+					}
+				},
+				"filter": {
+					"term": {
+						"host": "andy"
+					}
+				}		
+			}
+		}
+	}
+	
+|------------------------------------------------------------------------------------
+| Most Commonly Used Queries & Filters
+|------------------------------------------------------------------------------------
+
+For a complete reference of version 1.4 (old and as per book):
+
+https://www.elastic.co/guide/en/elasticsearch/reference/1.4/query-dsl.html
+
+Ofcourse there are many ways to fine tune our queries and filters. They have their
+pros and cons too. The list is big. Have patience.
